@@ -42,6 +42,11 @@ struct amipdf {
     int pages_obj;
     int catalog_obj;
     int font_obj;
+    int info_obj;
+    char *title;
+    char *author;
+    char *creator;
+    char *producer;
     char *stream;
     size_t stream_len;
     size_t stream_capacity;
@@ -50,6 +55,8 @@ struct amipdf {
 
 int amipdf_init(struct amipdf *pdf, FILE *out);
 int amipdf_set_page_size(struct amipdf *pdf, int width_pt, int height_pt);
+int amipdf_set_metadata(struct amipdf *pdf, const char *title,
+    const char *author, const char *creator, const char *producer);
 int amipdf_begin_page(struct amipdf *pdf);
 int amipdf_text(struct amipdf *pdf, int x, int y, const char *text);
 int amipdf_image_rgb(struct amipdf *pdf, int x, int y, int width, int height,
