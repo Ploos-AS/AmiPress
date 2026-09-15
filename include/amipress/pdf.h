@@ -17,6 +17,15 @@ struct amipdf_page_data {
     size_t stream_len;
 };
 
+struct amipdf_image {
+    int object;
+    unsigned char *data;
+    size_t data_len;
+    int width;
+    int height;
+    int components;
+};
+
 struct amipdf {
     FILE *out;
     long *offsets;
@@ -25,6 +34,9 @@ struct amipdf {
     struct amipdf_page_data *pages;
     size_t page_count;
     size_t page_capacity;
+    struct amipdf_image *images;
+    size_t image_count;
+    size_t image_capacity;
     int page_width_pt;
     int page_height_pt;
     int pages_obj;
@@ -40,6 +52,8 @@ int amipdf_init(struct amipdf *pdf, FILE *out);
 int amipdf_set_page_size(struct amipdf *pdf, int width_pt, int height_pt);
 int amipdf_begin_page(struct amipdf *pdf);
 int amipdf_text(struct amipdf *pdf, int x, int y, const char *text);
+int amipdf_image_rgb(struct amipdf *pdf, int x, int y, int width, int height,
+    const unsigned char *rgb);
 int amipdf_end_page(struct amipdf *pdf);
 int amipdf_finish(struct amipdf *pdf);
 void amipdf_dispose(struct amipdf *pdf);
