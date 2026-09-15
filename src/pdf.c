@@ -19,14 +19,16 @@ static int reserve_offsets(struct amipdf *pdf, size_t need)
 
 static int reserve_pages(struct amipdf *pdf, size_t need)
 {
-    int *p;
+    struct amipdf_page_data *p;
     size_t cap;
     if (need <= pdf->page_capacity) return AMIPDF_OK;
-    cap = pdf->page_capacity ? pdf->page_capacity : 8;
+    cap = pdf->page_capacity ? pdf->page_capacity : 4;
     while (cap < need) cap *= 2;
-    p = (int *)realloc(pdf->page_objects, cap * sizeof(*p));
+    p = (struct amipdf_page_data *)realloc(pdf->pages, cap * sizeof(*p));
     if (!p) return AMIPDF_ERR_MEMORY;
-    pdf->page_objects = p;
+    memset(p + pdf->page_capacity, 0,
+        (cap - pdf->page_capacity) * sizeof(*p));
+    pdf->pages = p;
     pdf->page_capacity = cap;
     return AMIPDF_OK;
 }
@@ -95,8 +97,8 @@ static int pdf_escape_stream(struct amipdf *pdf, const char *text)
         if (*p < 32 || *p > 126) {
             sprintf(esc, "\\%03o", (unsigned int)*p);
             if (stream_append(pdf, esc, 4) != AMIPDF_OK) return AMIPDF_ERR_MEMORY;
-        } else {
-            if (stream_append(pdf, (const char *)p, 1) != AMIPDF_OK) return AMIPDF_ERR_MEMORY;
+        } else if (stream_append(pdf, (const char *)p, 1) != AMIPDF_OK) {
+            return AMIPDF_ERR_MEMORY;
         }
         ++p;
     }
@@ -139,8 +141,8 @@ int amipdf_begin_page(struct amipdf *pdf)
     if (!pdf || !pdf->out || pdf->current_stream_open) return AMIPDF_ERR_STATE;
     if (reserve_pages(pdf, pdf->page_count + 1) != AMIPDF_OK)
         return AMIPDF_ERR_MEMORY;
-    pdf->current_page_obj = next_object(pdf);
-    pdf->current_contents_obj = next_object(pdf);
+    pdf->pages[pdf->page_count].page_object = next_object(pdf);
+    pdf->pages[pdf->page_count].contents_object = next_object(pdf);
     pdf->stream_len = 0;
     pdf->current_stream_open = 1;
     return AMIPDF_OK;
@@ -159,33 +161,38 @@ int amipdf_text(struct amipdf *pdf, int x, int y, const char *text)
 
 int amipdf_end_page(struct amipdf *pdf)
 {
+    char *copy;
+    struct amipdf_page_data *page;
     if (!pdf || !pdf->current_stream_open) return AMIPDF_ERR_STATE;
-    pdf->page_objects[pdf->page_count] = pdf->current_page_obj;
+    page = &pdf->pages[pdf->page_count];
+    copy = (char *)malloc(pdf->stream_len + 1);
+    if (!copy) return AMIPDF_ERR_MEMORY;
+    if (pdf->stream_len != 0) memcpy(copy, pdf->stream, pdf->stream_len);
+    copy[pdf->stream_len] = '\0';
+    page->stream = copy;
+    page->stream_len = pdf->stream_len;
     ++pdf->page_count;
+    pdf->stream_len = 0;
     pdf->current_stream_open = 0;
     return AMIPDF_OK;
 }
 
 static int write_page(struct amipdf *pdf, size_t index)
 {
-    int page_obj;
-    int content_obj;
-    if (index >= pdf->page_count) return AMIPDF_ERR_ARGUMENT;
-    page_obj = pdf->page_objects[index];
-    content_obj = page_obj + 1;
-    if (object_begin(pdf, content_obj) != AMIPDF_OK) return AMIPDF_ERR_IO;
-    if (fprintf(pdf->out, "<< /Length %lu >>\nstream\n", (unsigned long)pdf->stream_len) < 0)
+    struct amipress_page_data_dummy *unused;
+    struct amipdf_page_data *page;
+    page = &pdf->pages[index];
+    if (object_begin(pdf, page->contents_object) != AMIPDF_OK) return AMIPDF_ERR_IO;
+    if (fprintf(pdf->out, "<< /Length %lu >>\nstream\n", (unsigned long)page->stream_len) < 0)
         return AMIPDF_ERR_IO;
-    if (index == 0 && pdf->stream_len != 0) {
-        if (fwrite(pdf->stream, 1, pdf->stream_len, pdf->out) != pdf->stream_len)
-            return AMIPDF_ERR_IO;
-    }
+    if (page->stream_len != 0 && fwrite(page->stream, 1, page->stream_len, pdf->out) != page->stream_len)
+        return AMIPDF_ERR_IO;
     if (fputs("endstream\nendobj\n", pdf->out) == EOF) return AMIPDF_ERR_IO;
-    if (object_begin(pdf, page_obj) != AMIPDF_OK) return AMIPDF_ERR_IO;
+    if (object_begin(pdf, page->page_object) != AMIPDF_OK) return AMIPDF_ERR_IO;
     if (fprintf(pdf->out,
         "<< /Type /Page /Parent %d 0 R /MediaBox [0 0 %d %d] /Resources << /Font << /F1 %d 0 R >> >> /Contents %d 0 R >>\nendobj\n",
         pdf->pages_obj, pdf->page_width_pt, pdf->page_height_pt,
-        pdf->font_obj, content_obj) < 0) return AMIPDF_ERR_IO;
+        pdf->font_obj, page->contents_object) < 0) return AMIPDF_ERR_IO;
     return AMIPDF_OK;
 }
 
@@ -194,27 +201,22 @@ int amipdf_finish(struct amipdf *pdf)
     long xref;
     size_t i;
     if (!pdf || !pdf->out || pdf->current_stream_open) return AMIPDF_ERR_STATE;
-
     if (object_begin(pdf, pdf->font_obj) != AMIPDF_OK) return AMIPDF_ERR_IO;
     if (fputs("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n", pdf->out) == EOF)
         return AMIPDF_ERR_IO;
-
     for (i = 0; i < pdf->page_count; ++i) {
         if (write_page(pdf, i) != AMIPDF_OK) return AMIPDF_ERR_IO;
     }
-
     if (object_begin(pdf, pdf->pages_obj) != AMIPDF_OK) return AMIPDF_ERR_IO;
     if (fprintf(pdf->out, "<< /Type /Pages /Count %lu /Kids [", (unsigned long)pdf->page_count) < 0)
         return AMIPDF_ERR_IO;
     for (i = 0; i < pdf->page_count; ++i) {
-        if (fprintf(pdf->out, "%d 0 R ", pdf->page_objects[i]) < 0) return AMIPDF_ERR_IO;
+        if (fprintf(pdf->out, "%d 0 R ", pdf->pages[i].page_object) < 0) return AMIPDF_ERR_IO;
     }
     if (fputs("] >>\nendobj\n", pdf->out) == EOF) return AMIPDF_ERR_IO;
-
     if (object_begin(pdf, pdf->catalog_obj) != AMIPDF_OK) return AMIPDF_ERR_IO;
     if (fprintf(pdf->out, "<< /Type /Catalog /Pages %d 0 R >>\nendobj\n", pdf->pages_obj) < 0)
         return AMIPDF_ERR_IO;
-
     xref = ftell(pdf->out);
     if (xref < 0) return AMIPDF_ERR_IO;
     if (fprintf(pdf->out, "xref\n0 %lu\n0000000000 65535 f \n", (unsigned long)pdf->offset_count) < 0)
@@ -229,9 +231,11 @@ int amipdf_finish(struct amipdf *pdf)
 
 void amipdf_dispose(struct amipdf *pdf)
 {
+    size_t i;
     if (!pdf) return;
+    for (i = 0; i < pdf->page_count; ++i) free(pdf->pages[i].stream);
+    free(pdf->pages);
     free(pdf->offsets);
-    free(pdf->page_objects);
     free(pdf->stream);
     memset(pdf, 0, sizeof(*pdf));
 }
