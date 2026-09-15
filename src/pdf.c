@@ -179,7 +179,6 @@ int amipdf_end_page(struct amipdf *pdf)
 
 static int write_page(struct amipdf *pdf, size_t index)
 {
-    struct amipress_page_data_dummy *unused;
     struct amipdf_page_data *page;
     page = &pdf->pages[index];
     if (object_begin(pdf, page->contents_object) != AMIPDF_OK) return AMIPDF_ERR_IO;
