@@ -21,10 +21,10 @@
 
 ## M2 — PDF Backend
 
-- [ ] PDF 1.4 baseline writer
-- [ ] Objects, streams and xref
-- [ ] Pages and resources
-- [ ] Text output
+- [x] PDF 1.4 baseline writer
+- [x] Objects, streams and xref
+- [x] Pages and resources
+- [x] Text output
 - [ ] Bitmap/image output
 - [ ] Flate compression
 - [ ] Metadata
