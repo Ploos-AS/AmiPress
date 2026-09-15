@@ -20,6 +20,11 @@ static int check_file(FILE *fp)
     if (strstr(buf, "/ColorSpace /DeviceRGB") == NULL) return 1;
     if (strstr(buf, "/Filter /FlateDecode") == NULL) return 1;
     if (strstr(buf, "/XObject << /Im1") == NULL) return 1;
+    if (strstr(buf, "/Title (AmiPress M2 Test)") == NULL) return 1;
+    if (strstr(buf, "/Author (Ploos-AS)") == NULL) return 1;
+    if (strstr(buf, "/Creator (AmiPress test suite)") == NULL) return 1;
+    if (strstr(buf, "/Producer (AmiPress PDF backend)") == NULL) return 1;
+    if (strstr(buf, "/Info ") == NULL) return 1;
     if (strstr(buf, "xref\n") == NULL) return 1;
     if (strstr(buf, "startxref\n") == NULL) return 1;
     if (strstr(buf, "%%EOF") == NULL) return 1;
@@ -35,6 +40,8 @@ int main(void)
     };
     fp = tmpfile(); if (!fp) return 1;
     rc = amipdf_init(&pdf, fp); if (rc != AMIPDF_OK) return 1;
+    if (amipdf_set_metadata(&pdf, "AmiPress M2 Test", "Ploos-AS",
+        "AmiPress test suite", "AmiPress PDF backend") != AMIPDF_OK) return 1;
     if (amipdf_set_page_size(&pdf, 612, 792) != AMIPDF_OK) return 1;
     if (amipdf_begin_page(&pdf) != AMIPDF_OK) return 1;
     if (amipdf_text(&pdf, 72, 720, "Hello AmiPress") != AMIPDF_OK) return 1;
@@ -46,6 +53,6 @@ int main(void)
     if (amipdf_finish(&pdf) != AMIPDF_OK) return 1;
     if (check_file(fp) != 0) return 1;
     amipdf_dispose(&pdf); fclose(fp);
-    puts("PASS: PDF 1.4 text, RGB image and Flate serialization");
+    puts("PASS: PDF 1.4 text, RGB image, Flate and metadata serialization");
     return 0;
 }
