@@ -25,8 +25,8 @@
 - [x] Objects, streams and xref
 - [x] Pages and resources
 - [x] Text output
-- [ ] Bitmap/image output
-- [ ] Flate compression
+- [x] Bitmap/image output — RGB images
+- [x] Flate compression — dependency-free stored DEFLATE blocks
 - [ ] Metadata
 
 ## M3 — Text and Encoding
