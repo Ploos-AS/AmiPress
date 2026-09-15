@@ -10,26 +10,25 @@
 #define AMIPDF_ERR_MEMORY 3
 #define AMIPDF_ERR_STATE 4
 
-struct amipdf_page {
-    int width_pt;
-    int height_pt;
-};
-
 struct amipdf {
     FILE *out;
     long *offsets;
     size_t offset_count;
     size_t offset_capacity;
+    int *page_objects;
+    size_t page_count;
+    size_t page_capacity;
     int page_width_pt;
     int page_height_pt;
     int pages_obj;
-    int pages_count;
     int catalog_obj;
     int font_obj;
     int current_page_obj;
     int current_contents_obj;
+    char *stream;
+    size_t stream_len;
+    size_t stream_capacity;
     int current_stream_open;
-    long current_stream_start;
 };
 
 int amipdf_init(struct amipdf *pdf, FILE *out);
