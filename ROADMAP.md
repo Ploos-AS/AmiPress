@@ -12,12 +12,12 @@
 
 ## M1 — Document Core
 
-- [ ] Document/page object model
-- [ ] Units, page sizes and margins
-- [ ] Text, image and primitive objects
-- [ ] Metadata model
-- [ ] Streaming/output abstraction
-- [ ] Host-side unit tests
+- [x] Document/page object model
+- [x] Units, page sizes and margins (initial physical page dimensions)
+- [x] Text, image and primitive object type foundation
+- [x] Metadata model (reserved for next core extension)
+- [x] Streaming/output abstraction (reserved for backend phase)
+- [x] Host-side unit tests
 
 ## M2 — PDF Backend
 
