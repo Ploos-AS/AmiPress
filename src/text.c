@@ -101,6 +101,22 @@ int amipress_decode_byte(enum amipress_encoding encoding, unsigned char input, u
     return AMIPRESS_TEXT_ERR_UNMAPPABLE;
 }
 
+int amipress_decode_text(enum amipress_encoding encoding,
+    const unsigned char *input, size_t input_len,
+    unsigned long *output, size_t output_count, size_t *output_len)
+{
+    size_t i;
+    int rc;
+    if ((!input && input_len) || !output_len) return AMIPRESS_TEXT_ERR_ARGUMENT;
+    if (input_len > output_count || (!output && input_len)) return AMIPRESS_TEXT_ERR_NOSPACE;
+    for (i = 0; i < input_len; ++i) {
+        rc = amipress_decode_byte(encoding, input[i], &output[i]);
+        if (rc != AMIPRESS_TEXT_OK) return rc;
+    }
+    *output_len = input_len;
+    return AMIPRESS_TEXT_OK;
+}
+
 int amipress_map_text(enum amipress_encoding encoding, const unsigned char *input, size_t input_len,
     unsigned char *output, size_t output_size, size_t *output_len)
 {
