@@ -45,7 +45,7 @@ int main(void)
     if (amipdf_set_page_size(&pdf, 612, 792) != AMIPDF_OK) return 1;
     if (amipdf_begin_page(&pdf) != AMIPDF_OK) return 1;
     if (amipdf_text(&pdf, 72, 720, "Hello AmiPress") != AMIPDF_OK) return 1;
-    if (amipdf_image_rgb(&pdf, 72, 500, 20, 20, image) != AMIPDF_OK) return 1;
+    if (amipdf_image_rgb(&pdf, 72, 500, 2, 2, image) != AMIPDF_OK) return 1;
     if (amipdf_end_page(&pdf) != AMIPDF_OK) return 1;
     if (amipdf_begin_page(&pdf) != AMIPDF_OK) return 1;
     if (amipdf_text(&pdf, 72, 720, "Second page") != AMIPDF_OK) return 1;
