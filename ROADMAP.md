@@ -33,9 +33,9 @@
 ## M3 — Text and Encoding
 
 - [ ] Amiga printer text capture
-- [ ] Base-14 PDF fonts
-- [ ] Bold/italic/underline mapping
-- [ ] Latin-1
+- [x] Base-14 PDF font model
+- [ ] Bold/italic/underline rendering — bold/italic Base-14 selection implemented; underline rendering pending
+- [x] Latin-1 byte mapping core
 - [ ] AmigaPL
 - [ ] ISO-8859-2
 - [ ] Windows-1250
