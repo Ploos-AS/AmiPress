@@ -38,8 +38,8 @@
 - [x] Latin-1 byte mapping core
 - [x] AmigaPL decoding table
 - [x] ISO-8859-2 decoding table
-- [ ] Windows-1250
-- [ ] Extensible character mapping — encoding-independent Unicode codepoint API established
+- [x] Windows-1250 decoding table, including undefined-byte handling
+- [x] Extensible character mapping — encoding-independent Unicode codepoint API established
 
 ## M4 — Graphics and Layout
 
