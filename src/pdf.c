@@ -83,6 +83,28 @@ static int pdf_escape_stream(struct amipdf *pdf, const char *text)
     }
     return AMIPDF_OK;
 }
+static int pdf_write_escaped(FILE *out, const char *text)
+{
+    const unsigned char *p = (const unsigned char *)text;
+    if (fputc('(', out) == EOF) return AMIPDF_ERR_IO;
+    while (*p) {
+        if (*p == '(' || *p == ')' || *p == '\\') {
+            if (fputc('\\', out) == EOF || fputc((int)*p, out) == EOF) return AMIPDF_ERR_IO;
+        } else if (*p < 32 || *p > 126) {
+            if (fprintf(out, "\\%03o", (unsigned int)*p) < 0) return AMIPDF_ERR_IO;
+        } else if (fputc((int)*p, out) == EOF) return AMIPDF_ERR_IO;
+        ++p;
+    }
+    return fputc(')', out) == EOF ? AMIPDF_ERR_IO : AMIPDF_OK;
+}
+static char *copy_string(const char *s)
+{
+    char *p; size_t n;
+    if (!s) return NULL;
+    n = strlen(s) + 1; p = (char *)malloc(n);
+    if (p) memcpy(p, s, n);
+    return p;
+}
 static unsigned long adler32(const unsigned char *data, size_t len)
 {
     unsigned long a = 1, b = 0; size_t i;
@@ -124,6 +146,20 @@ int amipdf_set_page_size(struct amipdf *pdf, int width_pt, int height_pt)
     if (!pdf || !pdf->out || width_pt <= 0 || height_pt <= 0) return AMIPDF_ERR_ARGUMENT;
     if (pdf->page_count != 0) return AMIPDF_ERR_STATE;
     pdf->page_width_pt = width_pt; pdf->page_height_pt = height_pt; return AMIPDF_OK;
+}
+int amipdf_set_metadata(struct amipdf *pdf, const char *title, const char *author,
+    const char *creator, const char *producer)
+{
+    char *nt, *na, *nc, *np;
+    if (!pdf || !pdf->out || pdf->page_count != 0 || pdf->current_stream_open) return AMIPDF_ERR_STATE;
+    nt = copy_string(title); na = copy_string(author); nc = copy_string(creator); np = copy_string(producer);
+    if ((title && !nt) || (author && !na) || (creator && !nc) || (producer && !np)) {
+        free(nt); free(na); free(nc); free(np); return AMIPDF_ERR_MEMORY;
+    }
+    free(pdf->title); free(pdf->author); free(pdf->creator); free(pdf->producer);
+    pdf->title = nt; pdf->author = na; pdf->creator = nc; pdf->producer = np;
+    if (!pdf->info_obj && (title || author || creator || producer)) pdf->info_obj = next_object(pdf);
+    return AMIPDF_OK;
 }
 int amipdf_begin_page(struct amipdf *pdf)
 {
@@ -188,6 +224,24 @@ static int write_image(struct amipdf *pdf, struct amipdf_image *image)
     if (fwrite(compressed, 1, clen, pdf->out) != clen) { free(compressed); return AMIPDF_ERR_IO; }
     free(compressed); return fputs("\nendstream\nendobj\n", pdf->out) == EOF ? AMIPDF_ERR_IO : AMIPDF_OK;
 }
+static int write_info(struct amipdf *pdf)
+{
+    if (!pdf->info_obj) return AMIPDF_OK;
+    if (object_begin(pdf, pdf->info_obj) != AMIPDF_OK) return AMIPDF_ERR_IO;
+    if (fputs("<<", pdf->out) == EOF) return AMIPDF_ERR_IO;
+#define WRITE_INFO_FIELD(key, value) do { \
+    if (value) { \
+        if (fputs(" /" key " ", pdf->out) == EOF) return AMIPDF_ERR_IO; \
+        if (pdf_write_escaped(pdf->out, value) != AMIPDF_OK) return AMIPDF_ERR_IO; \
+    } \
+} while (0)
+    WRITE_INFO_FIELD("Title", pdf->title);
+    WRITE_INFO_FIELD("Author", pdf->author);
+    WRITE_INFO_FIELD("Creator", pdf->creator);
+    WRITE_INFO_FIELD("Producer", pdf->producer);
+#undef WRITE_INFO_FIELD
+    return fputs(" >>\nendobj\n", pdf->out) == EOF ? AMIPDF_ERR_IO : AMIPDF_OK;
+}
 int amipdf_finish(struct amipdf *pdf)
 {
     long xref; size_t i;
@@ -202,10 +256,13 @@ int amipdf_finish(struct amipdf *pdf)
     if (fputs("] >>\nendobj\n", pdf->out) == EOF) return AMIPDF_ERR_IO;
     if (object_begin(pdf, pdf->catalog_obj) != AMIPDF_OK) return AMIPDF_ERR_IO;
     if (fprintf(pdf->out, "<< /Type /Catalog /Pages %d 0 R >>\nendobj\n", pdf->pages_obj) < 0) return AMIPDF_ERR_IO;
+    if (write_info(pdf) != AMIPDF_OK) return AMIPDF_ERR_IO;
     xref = ftell(pdf->out); if (xref < 0) return AMIPDF_ERR_IO;
     if (fprintf(pdf->out, "xref\n0 %lu\n0000000000 65535 f \n", (unsigned long)pdf->offset_count) < 0) return AMIPDF_ERR_IO;
     for (i = 1; i < pdf->offset_count; ++i) if (fprintf(pdf->out, "%010ld 00000 n \n", pdf->offsets[i]) < 0) return AMIPDF_ERR_IO;
-    if (fprintf(pdf->out, "trailer\n<< /Size %lu /Root %d 0 R >>\nstartxref\n%ld\n%%%%EOF\n", (unsigned long)pdf->offset_count, pdf->catalog_obj, xref) < 0) return AMIPDF_ERR_IO;
+    if (fprintf(pdf->out, "trailer\n<< /Size %lu /Root %d 0 R", (unsigned long)pdf->offset_count, pdf->catalog_obj) < 0) return AMIPDF_ERR_IO;
+    if (pdf->info_obj && fprintf(pdf->out, " /Info %d 0 R", pdf->info_obj) < 0) return AMIPDF_ERR_IO;
+    if (fprintf(pdf->out, " >>\nstartxref\n%ld\n%%%%EOF\n", xref) < 0) return AMIPDF_ERR_IO;
     return fflush(pdf->out) == 0 ? AMIPDF_OK : AMIPDF_ERR_IO;
 }
 void amipdf_dispose(struct amipdf *pdf)
@@ -213,5 +270,6 @@ void amipdf_dispose(struct amipdf *pdf)
     size_t i; if (!pdf) return;
     for (i = 0; i < pdf->page_count; ++i) free(pdf->pages[i].stream);
     for (i = 0; i < pdf->image_count; ++i) free(pdf->images[i].data);
+    free(pdf->title); free(pdf->author); free(pdf->creator); free(pdf->producer);
     free(pdf->images); free(pdf->pages); free(pdf->offsets); free(pdf->stream); memset(pdf, 0, sizeof(*pdf));
 }
