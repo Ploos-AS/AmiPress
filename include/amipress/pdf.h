@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include "amipress/text.h"
+
 #define AMIPDF_OK 0
 #define AMIPDF_ERR_ARGUMENT 1
 #define AMIPDF_ERR_IO 2
@@ -42,6 +44,9 @@ struct amipdf {
     int pages_obj;
     int catalog_obj;
     int font_obj;
+    int bold_font_obj;
+    int oblique_font_obj;
+    int bold_oblique_font_obj;
     int info_obj;
     char *title;
     char *author;
@@ -59,6 +64,8 @@ int amipdf_set_metadata(struct amipdf *pdf, const char *title,
     const char *author, const char *creator, const char *producer);
 int amipdf_begin_page(struct amipdf *pdf);
 int amipdf_text(struct amipdf *pdf, int x, int y, const char *text);
+int amipdf_text_styled(struct amipdf *pdf, int x, int y, const char *text,
+    int size_pt, unsigned int style);
 int amipdf_image_rgb(struct amipdf *pdf, int x, int y, int width, int height,
     const unsigned char *rgb);
 int amipdf_end_page(struct amipdf *pdf);
