@@ -52,12 +52,6 @@ static int stream_append(struct amipdf *pdf, const char *s, size_t n)
     memcpy(pdf->stream + pdf->stream_len, s, n); pdf->stream_len += n;
     pdf->stream[pdf->stream_len] = '\0'; return AMIPDF_OK;
 }
-static int stream_printf(struct amipdf *pdf, const char *format, int a, int b)
-{
-    char buf[160]; int n = sprintf(buf, format, a, b);
-    if (n < 0 || (size_t)n >= sizeof(buf)) return AMIPDF_ERR_IO;
-    return stream_append(pdf, buf, (size_t)n);
-}
 static int next_object(struct amipdf *pdf)
 {
     int number = (int)pdf->offset_count; ++pdf->offset_count; return number;
