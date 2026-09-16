@@ -26,8 +26,9 @@
 - [x] Pages and resources
 - [x] Text output
 - [x] Bitmap/image output — RGB images
-- [x] Flate compression — dependency-free stored DEFLATE blocks
-- [ ] Metadata
+- [x] FlateDecode-compatible dependency-free stored DEFLATE blocks
+- [x] Metadata — Title, Author, Creator and Producer
+- [x] GitHub Actions host qualification
 
 ## M3 — Text and Encoding
 
@@ -89,7 +90,7 @@
 
 ## M9 — Qualification
 
-- [ ] Host tests
+- [x] Host tests
 - [ ] 68000 build
 - [ ] 68020 build
 - [ ] 68040 build
@@ -99,7 +100,7 @@
 - [ ] AmigaOS 3.1
 - [ ] AmigaOS 3.2
 - [ ] Visible FS-UAE qualification
-- [ ] GitHub runner automation where practical
+- [x] GitHub runner automation where practical
 
 ## M10 — Release
 
