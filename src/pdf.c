@@ -186,14 +186,16 @@ int amipdf_image_rgb(struct amipdf *pdf, int x, int y, int width, int height, co
     memcpy(image->data, rgb, bytes); image->data_len = bytes; image->width = width; image->height = height; image->components = 3;
     image->object = next_object(pdf); ++pdf->image_count;
     n = sprintf(buf, "q %d 0 0 %d %d %d cm /Im%d Do Q\n", width, height, x, y, (int)pdf->image_count);
-    if (n < 0 || (size_t)n >= sizeof(buf)) return AMIPDF_ERR_IO; return stream_append(pdf, buf, (size_t)n);
+    if (n < 0 || (size_t)n >= sizeof(buf)) return AMIPDF_ERR_IO;
+    return stream_append(pdf, buf, (size_t)n);
 }
 int amipdf_end_page(struct amipdf *pdf)
 {
     char *copy; struct amipdf_page_data *page;
     if (!pdf || !pdf->current_stream_open) return AMIPDF_ERR_STATE;
     page = &pdf->pages[pdf->page_count]; copy = (char *)malloc(pdf->stream_len + 1); if (!copy) return AMIPDF_ERR_MEMORY;
-    if (pdf->stream_len) memcpy(copy, pdf->stream, pdf->stream_len); copy[pdf->stream_len] = '\0';
+    if (pdf->stream_len) memcpy(copy, pdf->stream, pdf->stream_len);
+    copy[pdf->stream_len] = '\0';
     page->stream = copy; page->stream_len = pdf->stream_len; ++pdf->page_count; pdf->stream_len = 0; pdf->current_stream_open = 0; return AMIPDF_OK;
 }
 static int write_page(struct amipdf *pdf, size_t index)
