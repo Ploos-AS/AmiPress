@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host-qualification:
+    name: Host qualification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Toolchain versions
+        run: |
+          cc --version
+          make --version
+
+      - name: Clean
+        run: make clean
+
+      - name: Build and run checks
+        run: make check
+
+      - name: Rebuild from clean tree
+        run: |
+          make clean
+          make all
