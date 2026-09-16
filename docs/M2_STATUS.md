@@ -1,7 +1,7 @@
 # M2 PDF Backend Status
 
-M2 establishes the first real PDF backend and a deterministic host-side
-serialization test.
+M2 establishes the first real PDF backend and deterministic host-side
+serialization coverage.
 
 ## Implemented
 
@@ -17,23 +17,24 @@ serialization test.
 - Text content streams
 - PDF string escaping for ASCII control/non-ASCII bytes
 - A4/default and custom point page sizes
-- Host-side serialization test
+- Embedded RGB bitmap/image XObjects
+- FlateDecode image streams using a small dependency-free zlib/DEFLATE stored-block encoder
+- Document Info metadata: Title, Author, Creator and Producer
+- `/Info` trailer reference
+- Host-side serialization tests for text, images, compression and metadata
 
-## Deliberately deferred
+## Remaining for later milestones
 
-The following remain open for later M2/M3 work:
+- richer font and character encoding support (M3)
+- graphics/layout primitives (M4)
+- printer.device capture (M5)
+- additional output backends (M6)
 
-- embedded bitmap/image objects
-- Flate compression
-- document metadata
-- richer font and character encoding support
-- printer.device capture
-
-The current backend is therefore a functional PDF 1.4 core, not yet the final
-AmiPress printer replacement.
+The current backend is a functional lightweight PDF 1.4 core suitable as the
+foundation for the AmiPress printer replacement.
 
 ## Testing note
 
 The repository contains `make check` coverage for the document core and PDF
 serialization. Runtime execution should be performed in the normal CI and
-local toolchain environment before claiming a release qualification.
+local toolchain environment before claiming release qualification.
