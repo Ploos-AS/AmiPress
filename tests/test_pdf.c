@@ -7,7 +7,8 @@ static int fail(const char *message) { fprintf(stderr, "FAIL: %s\n", message); r
 static int contains_bytes(const unsigned char *buf, size_t len, const char *needle)
 {
     size_t needle_len = strlen(needle); size_t i;
-    if (needle_len == 0) return 1; if (needle_len > len) return 0;
+    if (needle_len == 0) return 1;
+    if (needle_len > len) return 0;
     for (i = 0; i <= len - needle_len; ++i) if (memcmp(buf + i, needle, needle_len) == 0) return 1;
     return 0;
 }
