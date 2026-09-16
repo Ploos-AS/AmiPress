@@ -115,11 +115,11 @@ static unsigned char *flate_store(const unsigned char *data, size_t len, size_t 
 {
     unsigned char *out; size_t blocks, n, pos, remaining, block; unsigned long ad;
     blocks = len ? (len + 65534U) / 65535U : 1U;
-    if (len > ((size_t)-1) - 6U - blocks * 5U) return NULL;
+    if (blocks > (((size_t)-1) - 6U - len) / 5U) return NULL;
     n = 2U + len + blocks * 5U + 4U; out = (unsigned char *)malloc(n);
     if (!out) return NULL;
     out[0] = 0x78; out[1] = 0x01; pos = 2; remaining = len;
-    if (!len) { out[pos++] = 1; out[pos++] = 0; out[pos++] = 0xff; out[pos++] = 0xff; }
+    if (!len) { out[pos++] = 1; out[pos++] = 0; out[pos++] = 0; out[pos++] = 0xff; out[pos++] = 0xff; }
     while (remaining) {
         block = remaining > 65535U ? 65535U : remaining;
         out[pos++] = (block == remaining) ? 1U : 0U;
@@ -138,7 +138,9 @@ int amipdf_init(struct amipdf *pdf, FILE *out)
 {
     if (!pdf || !out) return AMIPDF_ERR_ARGUMENT;
     memset(pdf, 0, sizeof(*pdf)); pdf->out = out; pdf->page_width_pt = 595; pdf->page_height_pt = 842;
-    pdf->offset_count = 1; pdf->pages_obj = next_object(pdf); pdf->catalog_obj = next_object(pdf); pdf->font_obj = next_object(pdf);
+    pdf->offset_count = 1; pdf->pages_obj = next_object(pdf); pdf->catalog_obj = next_object(pdf);
+    pdf->font_obj = next_object(pdf); pdf->bold_font_obj = next_object(pdf);
+    pdf->oblique_font_obj = next_object(pdf); pdf->bold_oblique_font_obj = next_object(pdf);
     return write_header(pdf);
 }
 int amipdf_set_page_size(struct amipdf *pdf, int width_pt, int height_pt)
@@ -168,12 +170,29 @@ int amipdf_begin_page(struct amipdf *pdf)
     pdf->pages[pdf->page_count].page_object = next_object(pdf); pdf->pages[pdf->page_count].contents_object = next_object(pdf);
     pdf->stream_len = 0; pdf->current_stream_open = 1; return AMIPDF_OK;
 }
+int amipdf_text_styled(struct amipdf *pdf, int x, int y, const char *text, int size_pt, unsigned int style)
+{
+    char buf[160]; int n, rc, font;
+    if (!pdf || !pdf->current_stream_open || !text || size_pt <= 0) return AMIPDF_ERR_ARGUMENT;
+    font = 1;
+    if ((style & (AMIPRESS_STYLE_BOLD | AMIPRESS_STYLE_ITALIC)) == (AMIPRESS_STYLE_BOLD | AMIPRESS_STYLE_ITALIC)) font = 4;
+    else if (style & AMIPRESS_STYLE_BOLD) font = 2;
+    else if (style & AMIPRESS_STYLE_ITALIC) font = 3;
+    n = sprintf(buf, "BT /F%d %d Tf %d %d Td (", font, size_pt, x, y);
+    if (n < 0 || (size_t)n >= sizeof(buf)) return AMIPDF_ERR_IO;
+    rc = stream_append(pdf, buf, (size_t)n); if (rc != AMIPDF_OK) return rc;
+    rc = pdf_escape_stream(pdf, text); if (rc != AMIPDF_OK) return rc;
+    rc = stream_append(pdf, ") Tj ET\n", 8); if (rc != AMIPDF_OK) return rc;
+    if (style & AMIPRESS_STYLE_UNDERLINE) {
+        n = sprintf(buf, "%d %d m %d %d l S\n", x, y - 2, x + (int)(strlen(text) * (size_t)size_pt / 2U), y - 2);
+        if (n < 0 || (size_t)n >= sizeof(buf)) return AMIPDF_ERR_IO;
+        return stream_append(pdf, buf, (size_t)n);
+    }
+    return AMIPDF_OK;
+}
 int amipdf_text(struct amipdf *pdf, int x, int y, const char *text)
 {
-    int rc;
-    if (!pdf || !pdf->current_stream_open || !text) return AMIPDF_ERR_STATE;
-    rc = stream_printf(pdf, "BT /F1 12 Tf %d %d Td (", x, y); if (rc != AMIPDF_OK) return rc;
-    rc = pdf_escape_stream(pdf, text); if (rc != AMIPDF_OK) return rc; return stream_append(pdf, ") Tj ET\n", 8);
+    return amipdf_text_styled(pdf, x, y, text, 12, 0U);
 }
 int amipdf_image_rgb(struct amipdf *pdf, int x, int y, int width, int height, const unsigned char *rgb)
 {
@@ -206,8 +225,8 @@ static int write_page(struct amipdf *pdf, size_t index)
     if (page->stream_len && fwrite(page->stream, 1, page->stream_len, pdf->out) != page->stream_len) return AMIPDF_ERR_IO;
     if (fputs("endstream\nendobj\n", pdf->out) == EOF) return AMIPDF_ERR_IO;
     if (object_begin(pdf, page->page_object) != AMIPDF_OK) return AMIPDF_ERR_IO;
-    if (fprintf(pdf->out, "<< /Type /Page /Parent %d 0 R /MediaBox [0 0 %d %d] /Resources << /Font << /F1 %d 0 R >>",
-        pdf->pages_obj, pdf->page_width_pt, pdf->page_height_pt, pdf->font_obj) < 0) return AMIPDF_ERR_IO;
+    if (fprintf(pdf->out, "<< /Type /Page /Parent %d 0 R /MediaBox [0 0 %d %d] /Resources << /Font << /F1 %d 0 R /F2 %d 0 R /F3 %d 0 R /F4 %d 0 R >>",
+        pdf->pages_obj, pdf->page_width_pt, pdf->page_height_pt, pdf->font_obj, pdf->bold_font_obj, pdf->oblique_font_obj, pdf->bold_oblique_font_obj) < 0) return AMIPDF_ERR_IO;
     if (pdf->image_count) {
         if (fputs(" /XObject <<", pdf->out) == EOF) return AMIPDF_ERR_IO;
         for (i = 0; i < pdf->image_count; ++i)
@@ -225,6 +244,11 @@ static int write_image(struct amipdf *pdf, struct amipdf_image *image)
         image->width, image->height, (unsigned long)clen) < 0) { free(compressed); return AMIPDF_ERR_IO; }
     if (fwrite(compressed, 1, clen, pdf->out) != clen) { free(compressed); return AMIPDF_ERR_IO; }
     free(compressed); return fputs("\nendstream\nendobj\n", pdf->out) == EOF ? AMIPDF_ERR_IO : AMIPDF_OK;
+}
+static int write_font(struct amipdf *pdf, int object, const char *name)
+{
+    if (object_begin(pdf, object) != AMIPDF_OK) return AMIPDF_ERR_IO;
+    return fprintf(pdf->out, "<< /Type /Font /Subtype /Type1 /BaseFont /%s >>\nendobj\n", name) < 0 ? AMIPDF_ERR_IO : AMIPDF_OK;
 }
 static int write_info(struct amipdf *pdf)
 {
@@ -248,8 +272,10 @@ int amipdf_finish(struct amipdf *pdf)
 {
     long xref; size_t i;
     if (!pdf || !pdf->out || pdf->current_stream_open) return AMIPDF_ERR_STATE;
-    if (object_begin(pdf, pdf->font_obj) != AMIPDF_OK) return AMIPDF_ERR_IO;
-    if (fputs("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n", pdf->out) == EOF) return AMIPDF_ERR_IO;
+    if (write_font(pdf, pdf->font_obj, "Helvetica") != AMIPDF_OK) return AMIPDF_ERR_IO;
+    if (write_font(pdf, pdf->bold_font_obj, "Helvetica-Bold") != AMIPDF_OK) return AMIPDF_ERR_IO;
+    if (write_font(pdf, pdf->oblique_font_obj, "Helvetica-Oblique") != AMIPDF_OK) return AMIPDF_ERR_IO;
+    if (write_font(pdf, pdf->bold_oblique_font_obj, "Helvetica-BoldOblique") != AMIPDF_OK) return AMIPDF_ERR_IO;
     for (i = 0; i < pdf->image_count; ++i) if (write_image(pdf, &pdf->images[i]) != AMIPDF_OK) return AMIPDF_ERR_IO;
     for (i = 0; i < pdf->page_count; ++i) if (write_page(pdf, i) != AMIPDF_OK) return AMIPDF_ERR_IO;
     if (object_begin(pdf, pdf->pages_obj) != AMIPDF_OK) return AMIPDF_ERR_IO;
