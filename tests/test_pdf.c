@@ -9,57 +9,74 @@ static int fail(const char *message)
     return 1;
 }
 
+static int contains_bytes(const unsigned char *buf, size_t len,
+    const char *needle)
+{
+    size_t needle_len;
+    size_t i;
+
+    needle_len = strlen(needle);
+    if (needle_len == 0)
+        return 1;
+    if (needle_len > len)
+        return 0;
+    for (i = 0; i <= len - needle_len; ++i) {
+        if (memcmp(buf + i, needle, needle_len) == 0)
+            return 1;
+    }
+    return 0;
+}
+
 static int check_file(FILE *fp)
 {
-    char buf[16384];
+    unsigned char buf[16384];
     size_t n;
     long size;
 
     if (fseek(fp, 0, SEEK_END) != 0)
         return fail("cannot seek to end of generated PDF");
     size = ftell(fp);
-    if (size < 0 || size >= (long)sizeof(buf))
+    if (size < 0 || size > (long)sizeof(buf))
         return fail("generated PDF size is invalid or exceeds test buffer");
     if (fseek(fp, 0, SEEK_SET) != 0)
         return fail("cannot rewind generated PDF");
     n = fread(buf, 1, (size_t)size, fp);
     if (n != (size_t)size)
         return fail("cannot read complete generated PDF");
-    buf[n] = '\0';
 
-    if (strncmp(buf, "%PDF-1.4\n", 9) != 0)
+    if (n < 9 || memcmp(buf, "%PDF-1.4\n", 9) != 0)
         return fail("missing PDF 1.4 header");
-    if (strstr(buf, "/Type /Catalog") == NULL)
+    if (!contains_bytes(buf, n, "/Type /Catalog"))
         return fail("missing Catalog object");
-    if (strstr(buf, "/Type /Pages /Count 2") == NULL)
+    if (!contains_bytes(buf, n, "/Type /Pages /Count 2"))
         return fail("missing two-page Pages tree");
-    if (strstr(buf, "Hello AmiPress") == NULL)
+    if (!contains_bytes(buf, n, "Hello AmiPress"))
         return fail("missing first-page text");
-    if (strstr(buf, "Second page") == NULL)
+    if (!contains_bytes(buf, n, "Second page"))
         return fail("missing second-page text");
-    if (strstr(buf, "/Subtype /Image") == NULL)
+    if (!contains_bytes(buf, n, "/Subtype /Image"))
         return fail("missing image XObject");
-    if (strstr(buf, "/ColorSpace /DeviceRGB") == NULL)
+    if (!contains_bytes(buf, n, "/ColorSpace /DeviceRGB"))
         return fail("missing RGB image colorspace");
-    if (strstr(buf, "/Filter /FlateDecode") == NULL)
+    if (!contains_bytes(buf, n, "/Filter /FlateDecode"))
         return fail("missing FlateDecode image filter");
-    if (strstr(buf, "/XObject << /Im1") == NULL)
+    if (!contains_bytes(buf, n, "/XObject << /Im1"))
         return fail("missing Im1 page resource");
-    if (strstr(buf, "/Title (AmiPress M2 Test)") == NULL)
+    if (!contains_bytes(buf, n, "/Title (AmiPress M2 Test)"))
         return fail("missing Title metadata");
-    if (strstr(buf, "/Author (Ploos-AS)") == NULL)
+    if (!contains_bytes(buf, n, "/Author (Ploos-AS)"))
         return fail("missing Author metadata");
-    if (strstr(buf, "/Creator (AmiPress test suite)") == NULL)
+    if (!contains_bytes(buf, n, "/Creator (AmiPress test suite)"))
         return fail("missing Creator metadata");
-    if (strstr(buf, "/Producer (AmiPress PDF backend)") == NULL)
+    if (!contains_bytes(buf, n, "/Producer (AmiPress PDF backend)"))
         return fail("missing Producer metadata");
-    if (strstr(buf, "/Info ") == NULL)
+    if (!contains_bytes(buf, n, "/Info "))
         return fail("missing trailer Info reference");
-    if (strstr(buf, "xref\n") == NULL)
+    if (!contains_bytes(buf, n, "xref\n"))
         return fail("missing xref table");
-    if (strstr(buf, "startxref\n") == NULL)
+    if (!contains_bytes(buf, n, "startxref\n"))
         return fail("missing startxref");
-    if (strstr(buf, "%%EOF") == NULL)
+    if (!contains_bytes(buf, n, "%%EOF"))
         return fail("missing EOF marker");
     return 0;
 }
