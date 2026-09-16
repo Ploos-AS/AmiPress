@@ -9,6 +9,15 @@ static int fail(const char *message)
     return 1;
 }
 
+static int expect_codepoint(enum amipress_encoding encoding,
+    unsigned char input, unsigned long expected)
+{
+    unsigned long codepoint;
+    if (amipress_decode_byte(encoding, input, &codepoint) != AMIPRESS_TEXT_OK)
+        return 0;
+    return codepoint == expected;
+}
+
 int main(void)
 {
     static const unsigned char latin1[] = {
@@ -16,6 +25,7 @@ int main(void)
     };
     unsigned char output[sizeof(latin1)];
     size_t output_len;
+    unsigned long codepoint;
 
     if (strcmp(amipress_base14_name(AMIPRESS_FONT_HELVETICA),
         "Helvetica") != 0)
@@ -53,11 +63,35 @@ int main(void)
         memcmp(output, latin1, sizeof(latin1)) != 0)
         return fail("Latin-1 mapping changed bytes");
 
-    if (amipress_map_text(AMIPRESS_ENCODING_AMIGAPL, latin1,
-        sizeof(latin1), output, sizeof(output), &output_len) !=
-        AMIPRESS_TEXT_ERR_UNMAPPABLE)
-        return fail("unimplemented encoding must be explicit");
+    if (!expect_codepoint(AMIPRESS_ENCODING_LATIN1, 0xc6, 0x00c6UL))
+        return fail("Latin-1 Unicode decode");
 
-    puts("PASS: M3 Base-14 font model, style mapping and Latin-1 core");
+    if (!expect_codepoint(AMIPRESS_ENCODING_AMIGAPL, 0xc2, 0x0104UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_AMIGAPL, 0xca, 0x0106UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_AMIGAPL, 0xce, 0x0141UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_AMIGAPL, 0xd4, 0x015aUL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_AMIGAPL, 0xda, 0x0179UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_AMIGAPL, 0xdb, 0x017bUL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_AMIGAPL, 0xe2, 0x0105UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_AMIGAPL, 0xea, 0x0107UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_AMIGAPL, 0xee, 0x0142UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_AMIGAPL, 0xf4, 0x015bUL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_AMIGAPL, 0xfa, 0x017aUL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_AMIGAPL, 0xfb, 0x017cUL))
+        return fail("AmigaPL Polish character decoding");
+
+    if (!expect_codepoint(AMIPRESS_ENCODING_ISO_8859_2, 0xa1, 0x0104UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_ISO_8859_2, 0xa3, 0x0141UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_ISO_8859_2, 0xac, 0x0179UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_ISO_8859_2, 0xb1, 0x0105UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_ISO_8859_2, 0xb3, 0x0142UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_ISO_8859_2, 0xbc, 0x017aUL))
+        return fail("ISO-8859-2 character decoding");
+
+    if (amipress_decode_byte(AMIPRESS_ENCODING_WINDOWS_1250,
+        0xa5, &codepoint) != AMIPRESS_TEXT_ERR_UNMAPPABLE)
+        return fail("Windows-1250 must remain explicit until implemented");
+
+    puts("PASS: M3 Base-14, Latin-1, AmigaPL and ISO-8859-2 core");
     return 0;
 }
