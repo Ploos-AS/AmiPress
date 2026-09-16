@@ -36,10 +36,10 @@
 - [x] Base-14 PDF font model
 - [ ] Bold/italic/underline rendering — bold/italic Base-14 selection implemented; underline rendering pending
 - [x] Latin-1 byte mapping core
-- [ ] AmigaPL
-- [ ] ISO-8859-2
+- [x] AmigaPL decoding table
+- [x] ISO-8859-2 decoding table
 - [ ] Windows-1250
-- [ ] Extensible character mapping
+- [ ] Extensible character mapping — encoding-independent Unicode codepoint API established
 
 ## M4 — Graphics and Layout
 
