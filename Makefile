@@ -17,8 +17,8 @@ $(BUILD):
 $(TEST_DOCUMENT): $(BUILD) tests/test_document.c src/document.c include/amipress/document.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ tests/test_document.c src/document.c
 
-$(TEST_PDF): $(BUILD) tests/test_pdf.c src/pdf.c include/amipress/pdf.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ tests/test_pdf.c src/pdf.c
+$(TEST_PDF): $(BUILD) tests/test_pdf.c src/pdf.c src/pdf_encoding.c src/text.c include/amipress/pdf.h include/amipress/text.h
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ tests/test_pdf.c src/pdf.c src/pdf_encoding.c src/text.c
 
 $(TEST_TEXT): $(BUILD) tests/test_text.c src/text.c include/amipress/text.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ tests/test_text.c src/text.c
