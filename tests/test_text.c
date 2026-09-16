@@ -88,10 +88,29 @@ int main(void)
         !expect_codepoint(AMIPRESS_ENCODING_ISO_8859_2, 0xbc, 0x017aUL))
         return fail("ISO-8859-2 character decoding");
 
-    if (amipress_decode_byte(AMIPRESS_ENCODING_WINDOWS_1250,
-        0xa5, &codepoint) != AMIPRESS_TEXT_ERR_UNMAPPABLE)
-        return fail("Windows-1250 must remain explicit until implemented");
+    if (!expect_codepoint(AMIPRESS_ENCODING_WINDOWS_1250, 0x80, 0x20acUL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_WINDOWS_1250, 0x8c, 0x015aUL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_WINDOWS_1250, 0xa1, 0x02c7UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_WINDOWS_1250, 0xa5, 0x0104UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_WINDOWS_1250, 0xaf, 0x017bUL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_WINDOWS_1250, 0xb9, 0x0105UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_WINDOWS_1250, 0xbf, 0x017cUL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_WINDOWS_1250, 0xc0, 0x0154UL) ||
+        !expect_codepoint(AMIPRESS_ENCODING_WINDOWS_1250, 0xff, 0x02d9UL))
+        return fail("Windows-1250 character decoding");
 
-    puts("PASS: M3 Base-14, Latin-1, AmigaPL and ISO-8859-2 core");
+    if (amipress_decode_byte(AMIPRESS_ENCODING_WINDOWS_1250,
+        0x81, &codepoint) != AMIPRESS_TEXT_ERR_UNMAPPABLE ||
+        amipress_decode_byte(AMIPRESS_ENCODING_WINDOWS_1250,
+        0x83, &codepoint) != AMIPRESS_TEXT_ERR_UNMAPPABLE ||
+        amipress_decode_byte(AMIPRESS_ENCODING_WINDOWS_1250,
+        0x88, &codepoint) != AMIPRESS_TEXT_ERR_UNMAPPABLE ||
+        amipress_decode_byte(AMIPRESS_ENCODING_WINDOWS_1250,
+        0x90, &codepoint) != AMIPRESS_TEXT_ERR_UNMAPPABLE ||
+        amipress_decode_byte(AMIPRESS_ENCODING_WINDOWS_1250,
+        0x98, &codepoint) != AMIPRESS_TEXT_ERR_UNMAPPABLE)
+        return fail("Windows-1250 undefined bytes");
+
+    puts("PASS: M3 Base-14 and all planned single-byte decoding cores");
     return 0;
 }
