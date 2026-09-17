@@ -1,6 +1,7 @@
 #include "amipress/pdf_font.h"
 
 #include <stdio.h>
+#include <string.h>
 
 static int expect_code(unsigned long cp, unsigned int expected)
 {
@@ -14,12 +15,28 @@ static int expect_code(unsigned long cp, unsigned int expected)
     return 0;
 }
 
+static int expect_ce(unsigned long cp, const char *expected_name)
+{
+    unsigned char code = 0;
+    const char *name = 0;
+    int path = 0;
+    int rc = amipress_pdf_font_code(cp, &path, &code, &name);
+    if (rc != AMIPRESS_PDF_FONT_OK || path != AMIPRESS_PDF_FONT_PATH_CE ||
+        !name || strcmp(name, expected_name) != 0 || code < 0x80U) {
+        fprintf(stderr, "CE mapping failed: U+%04lx rc=%d path=%d\n", cp, rc, path);
+        return 1;
+    }
+    return 0;
+}
+
 int main(void)
 {
     unsigned long input[4];
     unsigned char output[4];
     size_t output_len = 0;
     unsigned char code = 0;
+    const char *name = 0;
+    int path = 0;
     int rc;
 
     if (expect_code(0x0041UL, 0x41U)) return 1;
@@ -31,6 +48,28 @@ int main(void)
     rc = amipress_pdf_winansi_code(0x0104UL, &code);
     if (rc != AMIPRESS_PDF_FONT_ERR_UNMAPPABLE) {
         fprintf(stderr, "A-ogonek must remain unmappable in WinAnsi baseline\n");
+        return 1;
+    }
+
+    if (expect_ce(0x0104UL, "Aogonek")) return 1;
+    if (expect_ce(0x0105UL, "aogonek")) return 1;
+    if (expect_ce(0x0141UL, "Lslash")) return 1;
+    if (expect_ce(0x0142UL, "lslash")) return 1;
+    if (expect_ce(0x015aUL, "Sacute")) return 1;
+    if (expect_ce(0x017bUL, "Zdotaccent")) return 1;
+    if (expect_ce(0x010cUL, "Ccaron")) return 1;
+    if (expect_ce(0x0165UL, "tcaron")) return 1;
+
+    rc = amipress_pdf_font_code(0x20acUL, &path, &code, &name);
+    if (rc != AMIPRESS_PDF_FONT_OK || path != AMIPRESS_PDF_FONT_PATH_WINANSI ||
+        code != 0x80U || name != 0) {
+        fprintf(stderr, "WinAnsi must remain preferred for Euro\n");
+        return 1;
+    }
+
+    rc = amipress_pdf_font_code(0x2603UL, &path, &code, &name);
+    if (rc != AMIPRESS_PDF_FONT_ERR_UNMAPPABLE) {
+        fprintf(stderr, "unsupported glyph was not rejected\n");
         return 1;
     }
 
