@@ -39,6 +39,10 @@ enum amipress_base14_font {
 const char *amipress_base14_name(enum amipress_base14_font font);
 enum amipress_base14_font amipress_base14_style(
     enum amipress_base14_font regular_font, unsigned int style);
+int amipress_base14_char_width(enum amipress_base14_font font,
+    unsigned char character, unsigned int *width_1000);
+int amipress_base14_text_width(enum amipress_base14_font font,
+    const unsigned char *text, size_t text_len, int size_pt, int *width_pt);
 int amipress_decode_byte(enum amipress_encoding encoding,
     unsigned char input, unsigned long *codepoint);
 int amipress_decode_text(enum amipress_encoding encoding,
