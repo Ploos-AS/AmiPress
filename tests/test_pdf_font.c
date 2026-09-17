@@ -31,6 +31,7 @@ static int expect_ce(unsigned long cp, const char *expected_name)
 
 int main(void)
 {
+    static const char differences_prefix[] = "[128 /Abreve /abreve /Aogonek";
     unsigned long input[4];
     unsigned char output[4];
     char differences[1024];
@@ -68,7 +69,7 @@ int main(void)
     rc = amipress_pdf_ce_differences(differences, sizeof(differences),
         &differences_len);
     if (rc != AMIPRESS_PDF_FONT_OK || differences_len != strlen(differences) ||
-        strncmp(differences, "[128 /Abreve /abreve /Aogonek", 30U) != 0 ||
+        strncmp(differences, differences_prefix, strlen(differences_prefix)) != 0 ||
         strstr(differences, "/Lslash") == 0 ||
         strstr(differences, "/Zdotaccent") == 0 ||
         differences[differences_len - 1U] != ']') {
