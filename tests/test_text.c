@@ -23,10 +23,15 @@ int main(void)
     static const unsigned char latin1[] = {'A','m','i','P','r','e','s','s',' ',0xc6,0xd8,0xc5};
     static const unsigned char mixed[] = {'A',0xa5,0x80};
     static const unsigned char bad_cp1250[] = {'A',0x81};
+    static const unsigned char metric_text[] = "AmiPress";
     unsigned char output[sizeof(latin1)];
     unsigned long decoded[8];
     size_t output_len;
     unsigned long codepoint;
+    unsigned int metric;
+    int width_regular;
+    int width_bold;
+    int width_courier;
 
     if (strcmp(amipress_base14_name(AMIPRESS_FONT_HELVETICA), "Helvetica") != 0) return fail("Helvetica Base-14 name");
     if (strcmp(amipress_base14_name(AMIPRESS_FONT_TIMES_ROMAN), "Times-Roman") != 0) return fail("Times-Roman Base-14 name");
@@ -37,6 +42,15 @@ int main(void)
     if (amipress_base14_style(AMIPRESS_FONT_HELVETICA, AMIPRESS_STYLE_BOLD | AMIPRESS_STYLE_ITALIC) != AMIPRESS_FONT_HELVETICA_BOLD_OBLIQUE) return fail("Helvetica bold italic mapping");
     if (amipress_base14_style(AMIPRESS_FONT_TIMES_ROMAN, AMIPRESS_STYLE_ITALIC) != AMIPRESS_FONT_TIMES_ITALIC) return fail("Times italic mapping");
     if (amipress_base14_style(AMIPRESS_FONT_COURIER, AMIPRESS_STYLE_BOLD) != AMIPRESS_FONT_COURIER_BOLD) return fail("Courier bold mapping");
+
+    if (amipress_base14_char_width(AMIPRESS_FONT_HELVETICA, 'A', &metric) != AMIPRESS_TEXT_OK || metric != 667U) return fail("Helvetica A metric");
+    if (amipress_base14_char_width(AMIPRESS_FONT_HELVETICA, 'i', &metric) != AMIPRESS_TEXT_OK || metric != 222U) return fail("Helvetica i metric");
+    if (amipress_base14_char_width(AMIPRESS_FONT_HELVETICA_BOLD, 'A', &metric) != AMIPRESS_TEXT_OK || metric != 722U) return fail("Helvetica Bold A metric");
+    if (amipress_base14_char_width(AMIPRESS_FONT_COURIER, 'W', &metric) != AMIPRESS_TEXT_OK || metric != 600U) return fail("Courier fixed metric");
+    if (amipress_base14_text_width(AMIPRESS_FONT_HELVETICA, metric_text, sizeof(metric_text) - 1U, 12, &width_regular) != AMIPRESS_TEXT_OK) return fail("Helvetica text measurement");
+    if (amipress_base14_text_width(AMIPRESS_FONT_HELVETICA_BOLD, metric_text, sizeof(metric_text) - 1U, 12, &width_bold) != AMIPRESS_TEXT_OK) return fail("Helvetica Bold text measurement");
+    if (amipress_base14_text_width(AMIPRESS_FONT_COURIER, metric_text, sizeof(metric_text) - 1U, 12, &width_courier) != AMIPRESS_TEXT_OK) return fail("Courier text measurement");
+    if (width_regular <= 0 || width_bold <= width_regular || width_courier <= 0) return fail("Base-14 measured widths");
 
     output_len = 0;
     if (amipress_map_text(AMIPRESS_ENCODING_LATIN1, latin1, sizeof(latin1), output, sizeof(output), &output_len) != AMIPRESS_TEXT_OK) return fail("Latin-1 mapping returned error");
@@ -58,6 +72,6 @@ int main(void)
     if (amipress_decode_text(AMIPRESS_ENCODING_WINDOWS_1250, bad_cp1250, sizeof(bad_cp1250), decoded, 8, &output_len) != AMIPRESS_TEXT_ERR_UNMAPPABLE) return fail("buffer decode undefined-byte handling");
     if (amipress_decode_text(AMIPRESS_ENCODING_LATIN1, 0, 0, 0, 0, &output_len) != AMIPRESS_TEXT_OK || output_len != 0) return fail("empty buffer decode");
 
-    puts("PASS: M3 Base-14 and encoded text buffer decoding");
+    puts("PASS: M3 Base-14 metrics and encoded text buffer decoding");
     return 0;
 }
