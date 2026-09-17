@@ -2,6 +2,11 @@
 
 #define UNDEFINED_CODEPOINT 0xffffUL
 
+struct ce_glyph {
+    unsigned long codepoint;
+    const char *name;
+};
+
 static const unsigned long winansi_high[32] = {
     0x20acUL,UNDEFINED_CODEPOINT,0x201aUL,0x0192UL,
     0x201eUL,0x2026UL,0x2020UL,0x2021UL,
@@ -11,6 +16,37 @@ static const unsigned long winansi_high[32] = {
     0x201dUL,0x2022UL,0x2013UL,0x2014UL,
     0x02dcUL,0x2122UL,0x0161UL,0x203aUL,
     0x0153UL,UNDEFINED_CODEPOINT,0x017eUL,0x0178UL
+};
+
+/* Adobe-style glyph names used by common Latin font programs. */
+static const struct ce_glyph ce_glyphs[] = {
+    {0x0102UL,"Abreve"},{0x0103UL,"abreve"},
+    {0x0104UL,"Aogonek"},{0x0105UL,"aogonek"},
+    {0x0106UL,"Cacute"},{0x0107UL,"cacute"},
+    {0x010cUL,"Ccaron"},{0x010dUL,"ccaron"},
+    {0x010eUL,"Dcaron"},{0x010fUL,"dcaron"},
+    {0x0110UL,"Dcroat"},{0x0111UL,"dcroat"},
+    {0x0118UL,"Eogonek"},{0x0119UL,"eogonek"},
+    {0x011aUL,"Ecaron"},{0x011bUL,"ecaron"},
+    {0x0139UL,"Lacute"},{0x013aUL,"lacute"},
+    {0x013dUL,"Lcaron"},{0x013eUL,"lcaron"},
+    {0x0141UL,"Lslash"},{0x0142UL,"lslash"},
+    {0x0143UL,"Nacute"},{0x0144UL,"nacute"},
+    {0x0147UL,"Ncaron"},{0x0148UL,"ncaron"},
+    {0x0150UL,"Ohungarumlaut"},{0x0151UL,"ohungarumlaut"},
+    {0x0154UL,"Racute"},{0x0155UL,"racute"},
+    {0x0158UL,"Rcaron"},{0x0159UL,"rcaron"},
+    {0x015aUL,"Sacute"},{0x015bUL,"sacute"},
+    {0x015eUL,"Scedilla"},{0x015fUL,"scedilla"},
+    {0x0162UL,"Tcedilla"},{0x0163UL,"tcedilla"},
+    {0x0164UL,"Tcaron"},{0x0165UL,"tcaron"},
+    {0x016eUL,"Uring"},{0x016fUL,"uring"},
+    {0x0170UL,"Uhungarumlaut"},{0x0171UL,"uhungarumlaut"},
+    {0x0179UL,"Zacute"},{0x017aUL,"zacute"},
+    {0x017bUL,"Zdotaccent"},{0x017cUL,"zdotaccent"},
+    {0x02c7UL,"caron"},{0x02d8UL,"breve"},
+    {0x02d9UL,"dotaccent"},{0x02dbUL,"ogonek"},
+    {0x02ddUL,"hungarumlaut"}
 };
 
 int amipress_pdf_winansi_code(unsigned long codepoint, unsigned char *code)
@@ -54,4 +90,39 @@ int amipress_pdf_winansi_encode(const unsigned long *codepoints,
 
     *output_len = codepoint_count;
     return AMIPRESS_PDF_FONT_OK;
+}
+
+int amipress_pdf_ce_code(unsigned long codepoint, unsigned char *code,
+    const char **glyph_name)
+{
+    size_t i;
+    if (!code || !glyph_name) return AMIPRESS_PDF_FONT_ERR_ARGUMENT;
+    for (i = 0; i < sizeof(ce_glyphs) / sizeof(ce_glyphs[0]); ++i) {
+        if (ce_glyphs[i].codepoint == codepoint) {
+            /* 0x80.. is a private code space for the future CE font resource. */
+            *code = (unsigned char)(0x80U + (unsigned int)i);
+            *glyph_name = ce_glyphs[i].name;
+            return AMIPRESS_PDF_FONT_OK;
+        }
+    }
+    return AMIPRESS_PDF_FONT_ERR_UNMAPPABLE;
+}
+
+int amipress_pdf_font_code(unsigned long codepoint, int *path,
+    unsigned char *code, const char **glyph_name)
+{
+    int rc;
+    if (!path || !code || !glyph_name) return AMIPRESS_PDF_FONT_ERR_ARGUMENT;
+    rc = amipress_pdf_winansi_code(codepoint, code);
+    if (rc == AMIPRESS_PDF_FONT_OK) {
+        *path = AMIPRESS_PDF_FONT_PATH_WINANSI;
+        *glyph_name = 0;
+        return AMIPRESS_PDF_FONT_OK;
+    }
+    rc = amipress_pdf_ce_code(codepoint, code, glyph_name);
+    if (rc == AMIPRESS_PDF_FONT_OK) {
+        *path = AMIPRESS_PDF_FONT_PATH_CE;
+        return AMIPRESS_PDF_FONT_OK;
+    }
+    return rc;
 }
