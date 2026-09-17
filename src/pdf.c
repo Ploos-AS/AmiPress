@@ -109,6 +109,7 @@ static unsigned char *flate_store(const unsigned char *data, size_t len, size_t 
 {
     unsigned char *out; size_t blocks, n, pos, remaining, block; unsigned long ad;
     blocks = len ? (len + 65534U) / 65535U : 1U;
+    if (len > ((size_t)-1) - 6U) return NULL;
     if (blocks > (((size_t)-1) - 6U - len) / 5U) return NULL;
     n = 2U + len + blocks * 5U + 4U; out = (unsigned char *)malloc(n);
     if (!out) return NULL;
@@ -242,7 +243,7 @@ static int write_image(struct amipdf *pdf, struct amipdf_image *image)
 static int write_font(struct amipdf *pdf, int object, const char *name)
 {
     if (object_begin(pdf, object) != AMIPDF_OK) return AMIPDF_ERR_IO;
-    return fprintf(pdf->out, "<< /Type /Font /Subtype /Type1 /BaseFont /%s >>\nendobj\n", name) < 0 ? AMIPDF_ERR_IO : AMIPDF_OK;
+    return fprintf(pdf->out, "<< /Type /Font /Subtype /Type1 /BaseFont /%s /Encoding /WinAnsiEncoding >>\nendobj\n", name) < 0 ? AMIPDF_ERR_IO : AMIPDF_OK;
 }
 static int write_info(struct amipdf *pdf)
 {
@@ -284,14 +285,14 @@ int amipdf_finish(struct amipdf *pdf)
     for (i = 1; i < pdf->offset_count; ++i) if (fprintf(pdf->out, "%010ld 00000 n \n", pdf->offsets[i]) < 0) return AMIPDF_ERR_IO;
     if (fprintf(pdf->out, "trailer\n<< /Size %lu /Root %d 0 R", (unsigned long)pdf->offset_count, pdf->catalog_obj) < 0) return AMIPDF_ERR_IO;
     if (pdf->info_obj && fprintf(pdf->out, " /Info %d 0 R", pdf->info_obj) < 0) return AMIPDF_ERR_IO;
-    if (fprintf(pdf->out, " >>\nstartxref\n%ld\n%%%%EOF\n", xref) < 0) return AMIPDF_ERR_IO;
-    return fflush(pdf->out) == 0 ? AMIPDF_OK : AMIPDF_ERR_IO;
+    return fprintf(pdf->out, " >>\nstartxref\n%ld\n%%%%EOF\n", xref) < 0 ? AMIPDF_ERR_IO : AMIPDF_OK;
 }
 void amipdf_dispose(struct amipdf *pdf)
 {
     size_t i; if (!pdf) return;
     for (i = 0; i < pdf->page_count; ++i) free(pdf->pages[i].stream);
     for (i = 0; i < pdf->image_count; ++i) free(pdf->images[i].data);
+    free(pdf->pages); free(pdf->images); free(pdf->offsets); free(pdf->stream);
     free(pdf->title); free(pdf->author); free(pdf->creator); free(pdf->producer);
-    free(pdf->images); free(pdf->pages); free(pdf->offsets); free(pdf->stream); memset(pdf, 0, sizeof(*pdf));
+    memset(pdf, 0, sizeof(*pdf));
 }
