@@ -34,12 +34,18 @@
 
 - [ ] Amiga printer text capture
 - [x] Base-14 PDF font model
-- [ ] Bold/italic/underline rendering — bold/italic Base-14 selection implemented; underline rendering pending
+- [x] Bold/italic/underline rendering — Base-14 style selection and initial underline path implemented
 - [x] Latin-1 byte mapping core
 - [x] AmigaPL decoding table
 - [x] ISO-8859-2 decoding table
 - [x] Windows-1250 decoding table, including undefined-byte handling
-- [x] Extensible character mapping — encoding-independent Unicode codepoint API established
+- [x] Extensible character mapping — encoding-independent Unicode codepoint and buffer APIs established
+- [x] Encoded-text PDF bridge
+- [x] Explicit WinAnsiEncoding for Base-14 PDF fonts
+- [x] Unicode-to-WinAnsi mapping with unmappable-character rejection
+- [x] GitHub Actions qualification for encoded PDF text
+- [ ] Full Central-European PDF glyph output beyond WinAnsi — requires a deliberate Differences or embedded-font path
+- [ ] Base-14 metric-aware underline width
 
 ## M4 — Graphics and Layout
 
