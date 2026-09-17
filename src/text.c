@@ -8,6 +8,24 @@ static const char *const base14_names[] = {
     "Symbol", "ZapfDingbats"
 };
 
+static const unsigned short helvetica_ascii_widths[95] = {
+    278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,
+    556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,
+    1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,
+    667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,
+    333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,
+    556,556,333,500,278,556,500,722,500,500,500,334,260,334,584
+};
+
+static const unsigned short helvetica_bold_ascii_widths[95] = {
+    278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,
+    556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,
+    975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,
+    667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,
+    333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,
+    611,611,389,556,333,611,556,778,556,556,500,389,280,389,584
+};
+
 static const unsigned short iso_8859_2_to_unicode[96] = {
     0x00a0,0x0104,0x02d8,0x0141,0x00a4,0x013d,0x015a,0x00a7,0x00a8,0x0160,0x015e,0x0164,0x0179,0x00ad,0x017d,0x017b,
     0x00b0,0x0105,0x02db,0x0142,0x00b4,0x013e,0x015b,0x02c7,0x00b8,0x0161,0x015f,0x0165,0x017a,0x02dd,0x017e,0x017c,
@@ -76,6 +94,45 @@ enum amipress_base14_font amipress_base14_style(enum amipress_base14_font regula
         return AMIPRESS_FONT_COURIER;
     }
     return regular_font;
+}
+
+int amipress_base14_char_width(enum amipress_base14_font font,
+    unsigned char character, unsigned int *width_1000)
+{
+    const unsigned short *widths;
+    if (!width_1000) return AMIPRESS_TEXT_ERR_ARGUMENT;
+    if (character < 32U || character > 126U) return AMIPRESS_TEXT_ERR_UNMAPPABLE;
+    if (font == AMIPRESS_FONT_HELVETICA || font == AMIPRESS_FONT_HELVETICA_OBLIQUE)
+        widths = helvetica_ascii_widths;
+    else if (font == AMIPRESS_FONT_HELVETICA_BOLD || font == AMIPRESS_FONT_HELVETICA_BOLD_OBLIQUE)
+        widths = helvetica_bold_ascii_widths;
+    else if (font >= AMIPRESS_FONT_COURIER && font <= AMIPRESS_FONT_COURIER_BOLD_OBLIQUE) {
+        *width_1000 = 600U;
+        return AMIPRESS_TEXT_OK;
+    } else return AMIPRESS_TEXT_ERR_UNMAPPABLE;
+    *width_1000 = (unsigned int)widths[character - 32U];
+    return AMIPRESS_TEXT_OK;
+}
+
+int amipress_base14_text_width(enum amipress_base14_font font,
+    const unsigned char *text, size_t text_len, int size_pt, int *width_pt)
+{
+    size_t i;
+    unsigned long total;
+    unsigned int width;
+    int rc;
+    if ((!text && text_len) || size_pt <= 0 || !width_pt) return AMIPRESS_TEXT_ERR_ARGUMENT;
+    total = 0UL;
+    for (i = 0; i < text_len; ++i) {
+        rc = amipress_base14_char_width(font, text[i], &width);
+        if (rc != AMIPRESS_TEXT_OK) return rc;
+        if (total > 0xffffffffUL - (unsigned long)width) return AMIPRESS_TEXT_ERR_ARGUMENT;
+        total += (unsigned long)width;
+    }
+    if (total > 0xffffffffUL / (unsigned long)size_pt) return AMIPRESS_TEXT_ERR_ARGUMENT;
+    total *= (unsigned long)size_pt;
+    *width_pt = (int)((total + 500UL) / 1000UL);
+    return AMIPRESS_TEXT_OK;
 }
 
 int amipress_decode_byte(enum amipress_encoding encoding, unsigned char input, unsigned long *codepoint)
