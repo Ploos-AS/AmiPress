@@ -1,6 +1,5 @@
 #include "amipress/pdf_font.h"
 
-#include <stdio.h>
 #include <string.h>
 
 #define UNDEFINED_CODEPOINT 0xffffUL
@@ -146,20 +145,11 @@ int amipress_pdf_ce_differences(char *output, size_t output_size,
     size_t i;
     size_t used;
     size_t name_len;
-    int n;
     if (!output_len) return AMIPRESS_PDF_FONT_ERR_ARGUMENT;
-
-    used = 0U;
-    if (output && output_size) output[0] = '\0';
-
-    n = sprintf(0, "");
-    (void)n;
-
-    /* Codes are contiguous, so one starting code is sufficient. */
     if (!output || output_size < 5U) return AMIPRESS_PDF_FONT_ERR_NOSPACE;
+
     memcpy(output, "[128", 4U);
     used = 4U;
-
     for (i = 0; i < ce_count(); ++i) {
         name_len = strlen(ce_glyphs[i].name);
         if (used > output_size || name_len > output_size - used ||
