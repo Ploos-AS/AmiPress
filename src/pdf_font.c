@@ -1,5 +1,8 @@
 #include "amipress/pdf_font.h"
 
+#include <stdio.h>
+#include <string.h>
+
 #define UNDEFINED_CODEPOINT 0xffffUL
 
 struct ce_glyph {
@@ -18,7 +21,6 @@ static const unsigned long winansi_high[32] = {
     0x0153UL,UNDEFINED_CODEPOINT,0x017eUL,0x0178UL
 };
 
-/* Adobe-style glyph names used by common Latin font programs. */
 static const struct ce_glyph ce_glyphs[] = {
     {0x0102UL,"Abreve"},{0x0103UL,"abreve"},
     {0x0104UL,"Aogonek"},{0x0105UL,"aogonek"},
@@ -49,25 +51,26 @@ static const struct ce_glyph ce_glyphs[] = {
     {0x02ddUL,"hungarumlaut"}
 };
 
+static size_t ce_count(void)
+{
+    return sizeof(ce_glyphs) / sizeof(ce_glyphs[0]);
+}
+
 int amipress_pdf_winansi_code(unsigned long codepoint, unsigned char *code)
 {
     unsigned int i;
     if (!code) return AMIPRESS_PDF_FONT_ERR_ARGUMENT;
-
     if ((codepoint >= 0x20UL && codepoint <= 0x7eUL) ||
         (codepoint >= 0xa0UL && codepoint <= 0xffUL)) {
         *code = (unsigned char)codepoint;
         return AMIPRESS_PDF_FONT_OK;
     }
-
     for (i = 0U; i < 32U; ++i) {
-        if (winansi_high[i] != UNDEFINED_CODEPOINT &&
-            winansi_high[i] == codepoint) {
+        if (winansi_high[i] != UNDEFINED_CODEPOINT && winansi_high[i] == codepoint) {
             *code = (unsigned char)(0x80U + i);
             return AMIPRESS_PDF_FONT_OK;
         }
     }
-
     return AMIPRESS_PDF_FONT_ERR_UNMAPPABLE;
 }
 
@@ -77,18 +80,29 @@ int amipress_pdf_winansi_encode(const unsigned long *codepoints,
 {
     size_t i;
     int rc;
-
-    if ((!codepoints && codepoint_count) || !output_len)
-        return AMIPRESS_PDF_FONT_ERR_ARGUMENT;
-    if (codepoint_count > output_size || (!output && codepoint_count))
-        return AMIPRESS_PDF_FONT_ERR_NOSPACE;
-
+    if ((!codepoints && codepoint_count) || !output_len) return AMIPRESS_PDF_FONT_ERR_ARGUMENT;
+    if (codepoint_count > output_size || (!output && codepoint_count)) return AMIPRESS_PDF_FONT_ERR_NOSPACE;
     for (i = 0; i < codepoint_count; ++i) {
         rc = amipress_pdf_winansi_code(codepoints[i], &output[i]);
         if (rc != AMIPRESS_PDF_FONT_OK) return rc;
     }
-
     *output_len = codepoint_count;
+    return AMIPRESS_PDF_FONT_OK;
+}
+
+size_t amipress_pdf_ce_glyph_count(void)
+{
+    return ce_count();
+}
+
+int amipress_pdf_ce_glyph(size_t index, unsigned char *code,
+    unsigned long *codepoint, const char **glyph_name)
+{
+    if (!code || !codepoint || !glyph_name) return AMIPRESS_PDF_FONT_ERR_ARGUMENT;
+    if (index >= ce_count()) return AMIPRESS_PDF_FONT_ERR_UNMAPPABLE;
+    *code = (unsigned char)(0x80U + (unsigned int)index);
+    *codepoint = ce_glyphs[index].codepoint;
+    *glyph_name = ce_glyphs[index].name;
     return AMIPRESS_PDF_FONT_OK;
 }
 
@@ -97,9 +111,8 @@ int amipress_pdf_ce_code(unsigned long codepoint, unsigned char *code,
 {
     size_t i;
     if (!code || !glyph_name) return AMIPRESS_PDF_FONT_ERR_ARGUMENT;
-    for (i = 0; i < sizeof(ce_glyphs) / sizeof(ce_glyphs[0]); ++i) {
+    for (i = 0; i < ce_count(); ++i) {
         if (ce_glyphs[i].codepoint == codepoint) {
-            /* 0x80.. is a private code space for the future CE font resource. */
             *code = (unsigned char)(0x80U + (unsigned int)i);
             *glyph_name = ce_glyphs[i].name;
             return AMIPRESS_PDF_FONT_OK;
@@ -125,4 +138,41 @@ int amipress_pdf_font_code(unsigned long codepoint, int *path,
         return AMIPRESS_PDF_FONT_OK;
     }
     return rc;
+}
+
+int amipress_pdf_ce_differences(char *output, size_t output_size,
+    size_t *output_len)
+{
+    size_t i;
+    size_t used;
+    size_t name_len;
+    int n;
+    if (!output_len) return AMIPRESS_PDF_FONT_ERR_ARGUMENT;
+
+    used = 0U;
+    if (output && output_size) output[0] = '\0';
+
+    n = sprintf(0, "");
+    (void)n;
+
+    /* Codes are contiguous, so one starting code is sufficient. */
+    if (!output || output_size < 5U) return AMIPRESS_PDF_FONT_ERR_NOSPACE;
+    memcpy(output, "[128", 4U);
+    used = 4U;
+
+    for (i = 0; i < ce_count(); ++i) {
+        name_len = strlen(ce_glyphs[i].name);
+        if (used > output_size || name_len > output_size - used ||
+            output_size - used <= name_len + 2U)
+            return AMIPRESS_PDF_FONT_ERR_NOSPACE;
+        output[used++] = ' ';
+        output[used++] = '/';
+        memcpy(output + used, ce_glyphs[i].name, name_len);
+        used += name_len;
+    }
+    if (output_size - used < 2U) return AMIPRESS_PDF_FONT_ERR_NOSPACE;
+    output[used++] = ']';
+    output[used] = '\0';
+    *output_len = used;
+    return AMIPRESS_PDF_FONT_OK;
 }
