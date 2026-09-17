@@ -17,9 +17,9 @@
  * Source encodings are decoded to Unicode before entering this layer.  The
  * WinAnsi path covers the existing Base-14 baseline.  The CE path assigns
  * stable private 8-bit PDF character codes to Central-European Unicode
- * glyphs.  A later PDF writer/font-program integration can use the returned
- * glyph names to build a /Differences encoding for an actually embedded or
- * otherwise guaranteed font program.
+ * glyphs.  The Differences helper serializes the mapping dictionary only;
+ * callers must pair it with a font program that actually contains the named
+ * glyphs.
  */
 int amipress_pdf_winansi_code(unsigned long codepoint, unsigned char *code);
 
@@ -32,5 +32,11 @@ int amipress_pdf_ce_code(unsigned long codepoint, unsigned char *code,
 
 int amipress_pdf_font_code(unsigned long codepoint, int *path,
     unsigned char *code, const char **glyph_name);
+
+size_t amipress_pdf_ce_glyph_count(void);
+int amipress_pdf_ce_glyph(size_t index, unsigned char *code,
+    unsigned long *codepoint, const char **glyph_name);
+int amipress_pdf_ce_differences(char *output, size_t output_size,
+    size_t *output_len);
 
 #endif
