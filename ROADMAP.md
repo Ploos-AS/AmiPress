@@ -44,8 +44,9 @@
 - [x] Explicit WinAnsiEncoding for Base-14 PDF fonts
 - [x] Unicode-to-WinAnsi mapping with unmappable-character rejection
 - [x] GitHub Actions qualification for encoded PDF text
-- [ ] Full Central-European PDF glyph output beyond WinAnsi — requires a deliberate Differences or embedded-font path
-- [ ] Base-14 metric-aware underline width
+- [x] Central-European PDF font architecture — see docs/M3_CE_FONT_STRATEGY.md
+- [ ] Full Central-European PDF glyph output beyond WinAnsi — implementation and qualification pending
+- [ ] Base-14 metric-aware underline width — metric core implemented; PDF integration pending
 
 ## M4 — Graphics and Layout
 
