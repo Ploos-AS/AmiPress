@@ -23,7 +23,7 @@ static int check_file(FILE *fp)
     if (!contains_bytes(buf,n,"/Type /Catalog") || !contains_bytes(buf,n,"/Type /Pages /Count 2")) return fail("missing PDF structure");
     if (!contains_bytes(buf,n,"Hello AmiPress") || !contains_bytes(buf,n,"Encoded ASCII")) return fail("missing text");
     if (!contains_bytes(buf,n,"/Encoding /WinAnsiEncoding")) return fail("missing WinAnsi font encoding");
-    if (!contains_bytes(buf,n,"\\200") || !contains_bytes(buf,n,"\\345")) return fail("missing mapped WinAnsi text bytes");
+    if (!contains_bytes(buf,n,"\\200") || !contains_bytes(buf,n,"\\351")) return fail("missing mapped WinAnsi text bytes");
     if (!contains_bytes(buf,n,"Styled text") || !contains_bytes(buf,n,"/BaseFont /Helvetica-BoldOblique") || !contains_bytes(buf,n,"BT /F4 18 Tf")) return fail("missing styled text");
     if (!contains_bytes(buf,n," m ") || !contains_bytes(buf,n," l S")) return fail("missing underline path");
     if (!contains_bytes(buf,n,"Second page")) return fail("missing second-page text");
@@ -38,7 +38,7 @@ int main(void)
     static const unsigned char image[12] = {255,0,0,0,255,0,0,0,255,255,255,0};
     static const unsigned char encoded_ascii[] = "Encoded ASCII";
     static const unsigned char cp1250_euro[] = {0x80};
-    static const unsigned char cp1250_a_ring[] = {0xe5};
+    static const unsigned char cp1250_e_acute[] = {0xe9};
     static const unsigned char cp1250_unmappable[] = {0xa5};
     fp = tmpfile(); if (!fp) return fail("tmpfile failed");
     rc = amipdf_init(&pdf, fp); if (rc != AMIPDF_OK) return fail("amipdf_init failed");
@@ -47,7 +47,7 @@ int main(void)
     if (amipdf_text(&pdf,72,720,"Hello AmiPress") != AMIPDF_OK) return fail("text failed");
     if (amipdf_text_encoded(&pdf,72,700,encoded_ascii,sizeof(encoded_ascii)-1,AMIPRESS_ENCODING_WINDOWS_1250,12,0U) != AMIPDF_OK) return fail("encoded ASCII bridge failed");
     if (amipdf_text_encoded(&pdf,72,690,cp1250_euro,sizeof(cp1250_euro),AMIPRESS_ENCODING_WINDOWS_1250,12,0U) != AMIPDF_OK) return fail("CP1250 Euro to WinAnsi mapping failed");
-    if (amipdf_text_encoded(&pdf,72,680,cp1250_a_ring,sizeof(cp1250_a_ring),AMIPRESS_ENCODING_WINDOWS_1250,12,0U) != AMIPDF_OK) return fail("CP1250 Latin-1 overlap mapping failed");
+    if (amipdf_text_encoded(&pdf,72,680,cp1250_e_acute,sizeof(cp1250_e_acute),AMIPRESS_ENCODING_WINDOWS_1250,12,0U) != AMIPDF_OK) return fail("CP1250 Latin-1 overlap mapping failed");
     if (amipdf_text_encoded(&pdf,72,670,cp1250_unmappable,sizeof(cp1250_unmappable),AMIPRESS_ENCODING_WINDOWS_1250,12,0U) != AMIPDF_ERR_UNMAPPABLE) return fail("non-WinAnsi codepoint was not rejected");
     if (amipdf_text_styled(&pdf,72,650,"Styled text",18,AMIPRESS_STYLE_BOLD|AMIPRESS_STYLE_ITALIC|AMIPRESS_STYLE_UNDERLINE) != AMIPDF_OK) return fail("styled text failed");
     if (amipdf_image_rgb(&pdf,72,500,2,2,image) != AMIPDF_OK || amipdf_end_page(&pdf) != AMIPDF_OK) return fail("first page finish failed");
